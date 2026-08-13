@@ -68,12 +68,13 @@ const settings = {
   },
 };
 
-// 加载 SmartAI（lib/tf.min.js 缺失/加载失败 → null，回退启发式）
+// 加载 SmartAI（TF.js CDN 不可达 → null，回退启发式）
 async function loadAI() {
   try {
     const { createSmartAI } = await import('./smartai.js');
-    // tf 双端获取：浏览器 = 全局 window.tf（lib/tf.min.js UMD）；Node 兜底 = 动态 import node_modules
-    const tf = globalThis.tf ?? await import('@tensorflow/tfjs');
+    // R2-A 修复：+esm 打包无 default 导出（`.default` 在浏览器为 undefined → SmartAI 永远降级）；
+    //   ready/setBackend 为具名导出，命名空间直用双端可用
+    const tf = await import('@tensorflow/tfjs');
     // 后端就绪守卫（参考源 smartAI.js:56-70 照抄）：WebGL 初始化失败 → CPU 回退 → 仍失败抛出让 catch 走启发式
     try {
       await tf.ready();

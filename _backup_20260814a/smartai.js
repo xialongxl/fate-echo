@@ -14,16 +14,15 @@
 // SmartAI 只作为"越打越聪明"的上层，接替同一接口。
 // ============================================================
 
-// tf 双端获取：浏览器 = 本地 lib/tf.min.js（普通 script 挂全局 window.tf，参考 gacha-RPG lib/ 模式）；
-// Node 测试 = globalThis.tf 不存在 → top-level await 回落本地 node_modules（同版本 4.22.0）
-const tf = globalThis.tf ?? await import('@tensorflow/tfjs');
+import * as tf from '@tensorflow/tfjs';
 import { createModelStore } from './storage.js';
 import { sacrificeCastable } from './ai.js';
 
-// 命名空间校验：tf 缺失/形态错误时主动抛错，让 main.js 的 loadAI catch
-// 走启发式回退（"库缺失"与"形态错误"同样降级，游戏照常可玩）
+// 命名空间校验：import map 若被指向 UMD 包（dist/tf.min.js），模块加载不报错但
+// 命名空间为空 → tf.sequential 崩溃。此处主动抛错，让 main.js 的 loadAI catch
+// 走启发式回退（"CDN 可达但形态错误"与"CDN 不可达"同样降级）
 if (typeof tf.sequential !== 'function' || typeof tf.layers === 'undefined') {
-  throw new Error('TensorFlow.js 命名空间不可用（lib/tf.min.js 缺失或形态错误）');
+  throw new Error('TensorFlow.js 命名空间不可用（import map 可能指向了 UMD 包）');
 }
 
 export const SMART_AI = {

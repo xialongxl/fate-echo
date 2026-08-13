@@ -4,9 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>命运回响 · Fate Echo</title>
-  <!-- TensorFlow.js（SmartAI）：本地 UMD lib/tf.min.js（与 package.json/node_modules 同版本 4.22.0），
-       普通 script 标签加载 → 挂全局 window.tf（参考 gacha-RPG lib/ 模式；不按模块加载 UMD）；
-       文件缺失/加载失败时 window.tf 未定义 → main.js 动态 import 失败 → 自动回退启发式 AI（游戏照常可玩） -->
+  <!-- TensorFlow.js（SmartAI）：+esm 端点（真实 ESM 具名导出；dist/tf.min.js 是 UMD，
+       按模块加载会拿到空命名空间导致 tf.sequential 崩溃）；与 package.json 版本一致；
+       CDN 不可达时 main.js 动态 import 失败 → 自动回退启发式 AI（游戏照常可玩） -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@tensorflow/tfjs": "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/+esm"
+    }
+  }
+  </script>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -159,7 +166,6 @@
     <div id="toast" class="toast" hidden></div>
   </div>
 
-  <script src="lib/tf.min.js"></script>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
