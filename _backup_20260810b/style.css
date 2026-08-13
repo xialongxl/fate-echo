@@ -1,0 +1,513 @@
+/* ============================================================
+   css/style.css — 命运回响 文字界面（Fate_echo Phase 1 骨架）
+   深色主题 + 等宽字体 + 区块化布局（NEW_GAME.md §6）
+   ============================================================ */
+
+:root {
+  --bg: #16181e;
+  --panel: #1e2129;
+  --panel-2: #232731;
+  --border: #343a48;
+  --text: #d8dce4;
+  --text-dim: #8a91a0;
+  --accent: #6ea8fe;
+  --hp: #e05252;
+  --mp: #4f8ef7;
+  --ap: #e8c766;
+  --crit: #ff9f43;
+  --heal: #2ecc71;
+  --buff: #b07df0;
+  --damage: #ff6b6b;
+
+  /* 严重 bug 修复：hidden 属性强制隐藏。
+     UA 样式 [hidden]{display:none} 优先级低于 .modal-overlay/#overworld 的
+     display:flex 声明 → 弹窗/视图加载即显示且无法关闭。用 !important 兜底。 */
+  [hidden] { display: none !important; }
+  --system: #7f8c9a;
+  --ok: #2ecc71;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Cascadia Mono", "JetBrains Mono", Consolas, "Microsoft YaHei", monospace;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+#app {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 14px 16px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ---------- 标题栏 ---------- */
+.title-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.title-text h1 { font-size: 20px; letter-spacing: 2px; }
+.sub { color: var(--text-dim); font-size: 12px; margin-left: 8px; }
+.title-actions { display: flex; align-items: center; gap: 12px; }
+.phase { color: var(--accent); font-size: 13px; }
+#btn-restart {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+#btn-restart:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ---------- 战斗区 ---------- */
+#battle-area {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
+.vs {
+  align-self: center;
+  color: var(--text-dim);
+  font-size: 22px;
+  font-weight: bold;
+}
+.unit-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  min-height: 170px;
+  position: relative;
+}
+.unit-panel.enemy.selectable { cursor: pointer; }
+.unit-panel.enemy.selected { border-color: var(--accent); box-shadow: 0 0 8px rgba(110, 168, 254, 0.25); }
+.unit-panel.enemy.dead { opacity: 0.45; }
+
+.unit-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.unit-name { font-size: 16px; font-weight: bold; }
+.unit-lv { color: var(--text-dim); font-size: 12px; }
+
+.bar { height: 14px; border-radius: 4px; background: #10131a; overflow: hidden; margin: 4px 0; position: relative; }
+.bar > .fill { height: 100%; transition: width 0.25s ease; }
+.bar.hp > .fill { background: linear-gradient(90deg, #7a2020, var(--hp)); }
+.bar.mp > .fill { background: linear-gradient(90deg, #1f3a66, var(--mp)); }
+.bar > .bar-text {
+  position: absolute; inset: 0;
+  text-align: center; font-size: 11px; line-height: 14px;
+  color: #fff; text-shadow: 0 1px 2px #000;
+}
+.bar-label { color: var(--text-dim); font-size: 11px; }
+
+.unit-stats { display: flex; gap: 10px; flex-wrap: wrap; color: var(--text-dim); font-size: 12px; margin: 6px 0; }
+.unit-stats b { color: var(--text); font-weight: normal; }
+
+.status-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; min-height: 20px; }
+.chip {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--buff);
+}
+.chip.shield { color: #6ec6ff; }
+.chip.vuln { color: #ff8f8f; }
+.chip.immune { color: #ffe066; }
+.chip.domain { color: #9d7bff; }
+.chip.hot { color: var(--heal); }
+.chip.dead { color: var(--system); }
+
+/* ---------- 行动区 ---------- */
+#action-area {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.resource-bar { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.resource {
+  font-size: 13px;
+  padding: 3px 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.skill-bar { display: flex; flex-wrap: wrap; gap: 8px; }
+.skill-btn {
+  position: relative;          /* CD 遮罩定位基准 */
+  overflow: hidden;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 7px 10px;
+  min-width: 108px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: border-color 0.15s, transform 0.05s;
+}
+.skill-btn:hover:not(:disabled) { border-color: var(--accent); }
+.skill-btn:active:not(:disabled) { transform: translateY(1px); }
+/* CD 冷却遮罩（末光照抄：黑色覆盖层表示冷却进度；CD 剩余回合文字保留在 meta） */
+.cd-mask {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  z-index: 1;
+}
+.skill-btn .key, .skill-btn .sname, .skill-btn .meta { position: relative; z-index: 2; }
+.skill-btn .key { color: var(--ap); font-weight: bold; margin-right: 6px; }
+.skill-btn .sname { font-size: 13px; }
+.skill-btn .meta { display: block; font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+.skill-btn.queued { border-color: var(--ok); background: rgba(46, 204, 113, 0.08); }
+.skill-btn.queued .key { color: var(--ok); }
+.skill-btn:disabled { opacity: 0.42; cursor: not-allowed; }
+.skill-btn.instant { border-style: dashed; }
+
+.controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.btn {
+  padding: 7px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary { background: #2a4d7a; border-color: #37609a; color: #fff; }
+.btn-primary:hover:not(:disabled) { background: #31598c; }
+.btn-defend { background: #5a4a2a; border-color: #7a6a3a; color: #fff; }
+.btn-defend:hover:not(:disabled) { background: #6a5832; }
+.btn-ghost { background: transparent; color: var(--text-dim); }
+.btn-ghost:hover:not(:disabled) { color: var(--text); }
+.btn-auto { background: #2a5a3a; border-color: #3a7a4a; color: #fff; }
+.btn-auto:hover:not(:disabled) { background: #336a46; }
+.setting { color: var(--text-dim); font-size: 12px; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.setting input { cursor: pointer; }
+.mode-indicator {
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.mode-indicator.auto { color: var(--ok); border-color: var(--ok); }
+.hint { color: var(--text-dim); font-size: 12px; margin-left: auto; }
+
+.toast {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #3a2430;
+  border: 1px solid #7a4a5a;
+  color: #ffc9d4;
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  z-index: 10;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+/* ---------- 日志区 ---------- */
+#log-area {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.log-header {
+  padding: 6px 14px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.log {
+  height: 320px;
+  overflow-y: auto;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+.log-line { padding: 1px 0; white-space: pre-wrap; word-break: break-word; }
+.log-line .rt { color: var(--text-dim); margin-right: 6px; }
+.log-line.type-crit { color: var(--crit); }
+.log-line.type-heal { color: var(--heal); }
+.log-line.type-buff { color: var(--buff); }
+.log-line.type-damage { color: var(--damage); }
+.log-line.type-system { color: var(--system); }
+.log-line.side-enemy { opacity: 0.75; }
+
+/* ---------- 塔外视图（Phase 4） ---------- */
+#overworld { display: flex; flex-direction: column; gap: 12px; }
+#overworld[hidden] { display: none; }
+.ow-top { display: grid; grid-template-columns: 1fr 1.6fr 1fr; gap: 12px; }
+.ow-panel-box {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.ow-player .ow-row { display: flex; justify-content: space-between; font-size: 13px; margin: 3px 0; }
+.ow-player .ow-row b { color: var(--text); font-weight: normal; }
+.exp-bar { height: 10px; border-radius: 4px; background: #10131a; overflow: hidden; margin: 6px 0; }
+.exp-bar > .fill { height: 100%; background: linear-gradient(90deg, #4a3a1f, var(--ap)); }
+.eq-slot { font-size: 12px; color: var(--text-dim); }
+.eq-slot b { color: var(--buff); font-weight: normal; }
+.ow-tower .depth-line { font-size: 14px; margin-bottom: 6px; }
+.ow-tower .depth-line b { color: var(--accent); }
+
+.ow-actions { display: flex; gap: 8px; }
+/* 树状图：纵向路线图（10 层 × 3 节点） */
+.ow-nodes { display: flex; flex-direction: column; gap: 2px; }
+.tree-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tree-link {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1;
+  user-select: none;
+  letter-spacing: 2px;
+}
+.tree-link.past { color: #3a4050; }
+.node-btn {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 8px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text);
+  font-size: 13px;
+  transition: border-color 0.15s, transform 0.05s;
+  min-height: 52px;
+}
+.node-btn:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-1px); }
+.node-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.node-btn.current { box-shadow: 0 0 8px rgba(110, 168, 254, 0.35); border-color: var(--accent); }
+.node-btn.done { opacity: 0.6; }
+.node-btn.battle { border-color: #7a3a3a; }
+.node-btn.event { border-color: #5a5a8a; }
+.node-btn.rest { border-color: #3a6a3a; }
+.node-btn.shop { border-color: #6a6a3a; }
+.node-btn.gacha { border-color: #8a5a9a; }
+.node-btn .node-sub { display: block; font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+.ow-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px; min-height: 120px; }
+.ow-panel .panel-title { font-size: 15px; margin-bottom: 8px; color: var(--accent); }
+.ow-panel .panel-text { font-size: 13px; margin: 6px 0; white-space: pre-wrap; }
+.ow-panel .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.ow-panel .opt-btn { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 6px 14px; cursor: pointer; font-family: inherit; font-size: 13px; }
+.ow-panel .opt-btn:hover { border-color: var(--accent); }
+.ow-panel .opt-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.shop-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.shop-item:last-child { border-bottom: none; }
+.gold-line { color: var(--ap); }
+
+/* 装备品质（末光咏叹 9 档着色风格） */
+.rarity { font-size: 11px; }
+.rarity-magic { color: #6ae06a; }
+.rarity-rare { color: #5aa8ff; }
+.rarity-epic { color: #ff9f43; }
+/* 常驻装备栏（末光咏叹：角色区 8 槽网格） */
+.eq-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 8px; }
+.eq-slot-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+  background: var(--panel-2);
+  min-height: 44px;
+}
+.eq-slot-card .slot-name { color: var(--text-dim); font-size: 11px; }
+.eq-slot-card.empty { opacity: 0.5; border-style: dashed; }
+.eq-slot-card .eq-btns { margin-top: 4px; display: flex; gap: 4px; }
+/* 背包独立界面（末光咏叹：列表 + 详情 + 操作） */
+.bag-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; max-height: 320px; overflow-y: auto; }
+.bag-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 13px; }
+.bag-item:hover { border-color: var(--accent); }
+.bag-item.selected { border-color: var(--accent); background: rgba(110,168,254,0.08); }
+.bag-detail { margin-top: 10px; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+.inv-item { flex-wrap: wrap; }
+
+/* 内嵌小地图（黑流树海式平面节点网络，固定视口可平移缩放） */
+.area-map-wrap { display: flex; flex-direction: column; gap: 6px; }
+.area-map-viewport {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  overflow: hidden;
+  background: #12151c;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: grab;
+  touch-action: none;
+}
+.area-map-viewport:active { cursor: grabbing; }
+.area-map-canvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+/* 通路连线（SVG） */
+.area-map-links { position: absolute; top: 0; left: 0; pointer-events: none; }
+.area-map-links line { stroke: #3a4152; stroke-width: 2; }
+/* 节点（圆形；黑流树海节点 = 格点） */
+.area-node {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  border-radius: 50%;
+  background: var(--panel-2);
+  border: 2px solid var(--border);
+  user-select: none;
+  box-sizing: border-box;
+}
+.area-node.current { border-color: var(--accent); box-shadow: 0 0 12px rgba(110,168,254,0.55); background: #2a3550; }
+.area-node.exit { border-color: #8a5a9a; background: #3a2440; }
+/* 已结算节点 → 灰色"林间空地"（黑流树海） */
+.area-node.cleared { background: #23262e; color: #5a5f6b; opacity: 0.8; }
+/* 迷雾：未知节点仅显示大类色点（凶戾紫=战斗 / 诡秘青=事件） */
+.area-node.fog-battle { color: #9a41e5; background: #241a33; border-color: #3a2a55; }
+.area-node.fog-event { color: #14bec0; background: #0f2a2b; border-color: #1d3f40; }
+.area-node.fog { color: #5a5f6b; background: #1a1d24; }
+/* 可达节点：一圈白光（黑流树海"可直接抵达的节点会出现一圈白光"） */
+.area-node.walkable { cursor: pointer; box-shadow: 0 0 8px rgba(255,255,255,0.6); border-color: #e8eaf0; }
+.area-node.walkable:hover { border-color: var(--accent); box-shadow: 0 0 12px rgba(110,168,254,0.7); }
+.area-map-controls { display: flex; align-items: center; gap: 6px; }
+.area-map-controls .hint { font-size: 11px; margin-left: auto; }
+
+/* ============================================================
+   背包 Modal / 装备栏 / 强化锻造（末光咏叹 rework.css 照抄）
+   ============================================================ */
+/* 品质色（末光 --q0~--q8） */
+:root {
+  --q0: #8b93a1; --q1: #f8fafc; --q2: #34d399; --q3: #38bdf8;
+  --q4: #a78bfa; --q5: #f59e0b; --q6: #fb7185; --q7: #f472b6; --q8: #ff2d78;
+}
+.q0 { color: var(--q0); }
+.q1 { color: var(--q1); }
+.q2 { color: var(--q2); }
+.q3 { color: var(--q3); }
+.q4 { color: var(--q4); }
+.q5 { color: var(--q5); }
+.q6 { color: var(--q6); }
+.q7 { color: var(--q7); text-shadow: 0 0 4px var(--q7); }
+.q8 { color: var(--q8); text-shadow: 0 0 7px var(--q8); font-weight: 900; }
+
+/* 全屏遮罩 + 终端弹窗 */
+/* 注意：display:flex 会覆盖 HTML hidden 属性（UA 样式 [hidden]{display:none} 优先级低），
+   必须显式声明 [hidden] 隐藏——否则弹窗加载即显示且无法关闭 */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-overlay[hidden] { display: none; }
+.modal {
+  width: 800px; max-width: 92%; max-height: 85vh;
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.terminal-header {
+  padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border); font-weight: 900; font-size: 15px;
+}
+.terminal-footer {
+  padding: 14px 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  border-top: 1px solid var(--border);
+}
+/* 物品网格（虚拟滚动三段式：topSpacer + visibleWrap + bottomSpacer） */
+.scroll-area { height: 280px; overflow-y: auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 20px; align-content: start; }
+.scroll-area.list { display: block; height: 320px; padding: 10px 16px; }
+.vscroll-top, .vscroll-bottom { grid-column: 1 / -1; }
+.vscroll-wrap { display: contents; }
+.vscroll-wrap.grid { display: contents; }
+.eq-card {
+  background: rgba(255,255,255,0.045); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px; text-align: center; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  transition: border-color 0.15s ease;
+}
+.eq-card:hover { border-color: var(--accent); }
+.eq-card.active { border-color: var(--accent); background: rgba(110,168,254,0.1); }
+.eq-card.disabled { opacity: 0.45; pointer-events: none; }
+.eq-card .name { font-weight: 900; font-size: 13px; }
+.eq-card .score { color: var(--mut); font-size: 11px; }
+.eq-card.batch { flex-direction: row; justify-content: flex-start; gap: 8px; text-align: left; }
+/* 详情面板 */
+.detail-panel { padding: 18px 22px; display: flex; flex-direction: column; gap: 14px; border-top: 1px solid var(--border); }
+.stats-box {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+  padding: 14px; border-radius: 8px; font-size: 13px; line-height: 1.7;
+}
+.stats-box .label { color: var(--mut); font-size: 11px; }
+.action-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+/* 宝珠区 */
+.gem-system { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.gem-slot-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; }
+.gem-slot-row.open { background: rgba(255,255,255,0.04); padding: 8px; border-radius: 6px; }
+.gem-chip {
+  display: inline-block; padding: 2px 8px; border: 1px solid var(--border); border-radius: 10px;
+  font-size: 11px; cursor: pointer; background: var(--panel-2);
+}
+.gem-chip:hover { border-color: var(--accent); }
+.gem-chip.remove { border-color: var(--damage); color: var(--damage); }
+/* 装备栏（末光 ui-equips：2 列网格槽位） */
+.equip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.equip-slot {
+  position: relative; isolation: isolate;
+  background: rgba(255,255,255,0.035); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px; text-align: center; cursor: pointer; transition: border-color 0.15s ease;
+}
+.equip-slot:hover { border-color: var(--accent); }
+.equip-name { position: relative; z-index: 1; font-weight: 900; margin-bottom: 4px; font-size: 12px; }
+.equip-stats { position: relative; z-index: 1; font-size: 11px; color: var(--mut); }
+.enhance-tag {
+  position: absolute; top: 0; right: 0; z-index: 2;
+  background: linear-gradient(135deg, var(--accent), #fbbf24); color: #1a1203;
+  font-size: 10px; padding: 2px 6px; border-radius: 0 8px 0 6px; font-weight: 900;
+}
+/* 强化锻造弹窗 */
+.refine-modal { border-color: var(--accent); }
+.refine-body { display: flex; min-height: 360px; }
+.refine-left { flex: 0 0 38%; border-right: 1px solid var(--border); height: 360px; overflow-y: auto; padding: 10px; display: block; }
+.refine-right { flex: 1; padding: 18px 20px; overflow-y: auto; }
+.refine-item {
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px;
+  cursor: pointer; font-size: 12px;
+}
+.refine-item.equipped { background: rgba(157,114,255,0.08); }
+.refine-item.selected { border-color: var(--accent); background: rgba(255,71,133,0.1); }
+.refine-item:hover { border-color: var(--accent); }
+.enhance-rate-ok { color: #2ecc71; font-weight: 900; }
+.enhance-rate-mid { color: #f1c40f; font-weight: 900; }
+.enhance-rate-low { color: #ff6b6b; font-weight: 900; }
+.enhance-gold { color: #fbbf24; font-weight: 900; }
+.enhance-disabled { opacity: 0.4; pointer-events: none; }
+.enhance-flash-success { animation: flashOk 0.5s ease; }
+.enhance-flash-fail { animation: flashFail 0.5s ease; }
+@keyframes flashOk { 0% { box-shadow: 0 0 0 rgba(46,204,113,0); } 40% { box-shadow: 0 0 24px rgba(46,204,113,0.8); } 100% { box-shadow: 0 0 0 rgba(46,204,113,0); } }
+@keyframes flashFail { 0% { box-shadow: 0 0 0 rgba(255,107,107,0); } 40% { box-shadow: 0 0 24px rgba(255,107,107,0.8); } 100% { box-shadow: 0 0 0 rgba(255,107,107,0); } }
+/* 批量分解勾选 */
+.batch-check { width: 16px; height: 16px; accent-color: var(--accent); }
+.line-input { background: var(--panel-2); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 4px 8px; font-size: 12px; }

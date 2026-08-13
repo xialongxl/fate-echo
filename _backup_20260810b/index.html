@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>命运回响 · Fate Echo</title>
+  <!-- TensorFlow.js（SmartAI）：+esm 端点（真实 ESM 具名导出；dist/tf.min.js 是 UMD，
+       按模块加载会拿到空命名空间导致 tf.sequential 崩溃）；与 package.json 版本一致；
+       CDN 不可达时 main.js 动态 import 失败 → 自动回退启发式 AI（游戏照常可玩） -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@tensorflow/tfjs": "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/+esm"
+    }
+  }
+  </script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header class="title-bar">
+      <div class="title-text">
+        <h1>命运回响</h1>
+        <span class="sub">FATE ECHO · 文字回合制战斗</span>
+      </div>
+      <div class="title-actions">
+        <span id="phase-el" class="phase"></span>
+        <button id="btn-restart" title="重新开始一场战斗">重新战斗</button>
+      </div>
+    </header>
+
+    <main id="battle-area">
+      <section id="enemy-panel" class="unit-panel enemy"></section>
+      <section class="vs">VS</section>
+      <section id="player-panel" class="unit-panel player"></section>
+    </main>
+
+    <!-- 塔外视图（树状图选关/商店/事件/抽卡/结算，Phase 4） -->
+    <section id="overworld" hidden>
+      <div class="ow-actions">
+        <button id="btn-bag" class="btn btn-ghost" title="背包：查看/穿戴/分解装备">🎒 背包</button>
+        <button id="btn-enhance" class="btn btn-ghost" title="强化锻造台">⚒ 强化</button>
+        <button id="btn-save" class="btn btn-ghost" title="存档管理（多槽位）">💾 存档</button>
+        <button id="btn-load" class="btn btn-ghost" title="读取存档">📂 读档</button>
+        <button id="btn-glossary" class="btn btn-ghost" title="术语表与帮助">📖 帮助</button>
+      </div>
+      <div class="ow-top">
+        <div id="ow-player" class="ow-panel-box"></div>
+        <div id="ow-equipped" class="ow-panel-box"></div>
+        <div id="ow-tower" class="ow-panel-box"></div>
+      </div>
+      <div class="area-map-wrap">
+        <div id="area-map" class="area-map-viewport"></div>
+        <div class="area-map-controls">
+          <button id="btn-map-zoom-in" class="btn btn-ghost" title="放大">＋</button>
+          <button id="btn-map-zoom-out" class="btn btn-ghost" title="缩小">－</button>
+          <button id="btn-map-reset" class="btn btn-ghost" title="重置视野（回到当前位置）">⛶ 重置</button>
+          <span class="hint">拖拽平移 · 滚轮缩放 · 点击可达节点（白光圈）移动 · 空格进入当前节点</span>
+        </div>
+      </div>
+      <div id="ow-panel" class="ow-panel"></div>
+    </section>
+
+    <!-- 背包 Modal（末光咏叹 terminal 照抄：标题+排序 / 物品网格 / 详情 / 底部栏；
+         显隐用 style.display 内联控制，与末光一致——不用 hidden 属性防 CSS 覆盖） -->
+    <div id="modal-overlay" class="modal-overlay" style="display:none">
+      <div class="modal">
+        <div class="terminal-header">
+          <span id="modal-title">🎒 背包</span>
+          <button id="btn-sort-backpack" class="btn btn-ghost" title="切换排序">默认顺序</button>
+        </div>
+        <div id="modal-content-area" class="scroll-area"></div>
+        <div id="item-details" class="detail-panel" style="display:none">
+          <div id="det-name"></div>
+          <div id="det-stats"></div>
+          <div class="action-buttons" id="det-actions"></div>
+        </div>
+        <div class="terminal-footer" id="modal-foot-bar"></div>
+      </div>
+    </div>
+
+    <!-- 强化锻造弹窗（末光 refine-modal 照抄：左列表 + 右详情） -->
+    <div id="enhance-overlay" class="modal-overlay" style="display:none">
+      <div class="modal refine-modal">
+        <div class="terminal-header">
+          <span id="enhance-title">⚒ 强化锻造</span>
+          <button id="enhance-close" class="btn btn-ghost">关闭</button>
+        </div>
+        <div class="refine-body">
+          <div id="enhance-gear-list" class="refine-left scroll-area list"></div>
+          <div id="enhance-details" class="refine-right"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 终焉精炼弹窗（末光 refine-overlay 照抄：终焉装备词缀精炼，消耗 3 终焉精华） -->
+    <div id="refine-overlay" class="modal-overlay" style="display:none">
+      <div class="modal refine-modal">
+        <div class="terminal-header">
+          <span id="refine-title">✨ 终焉精炼（消耗 3 终焉精华/次）</span>
+          <button id="refine-close" class="btn btn-ghost">关闭</button>
+        </div>
+        <div class="refine-body">
+          <div id="refine-gear-list" class="refine-left scroll-area list"></div>
+          <div id="refine-details" class="refine-right"></div>
+        </div>
+      </div>
+    </div>
+
+    <section id="action-area">
+      <div id="resource-bar" class="resource-bar"></div>
+      <div id="skill-bar" class="skill-bar"></div>
+      <div id="toast" class="toast" hidden></div>
+      <div class="controls">
+        <button id="btn-confirm" class="btn btn-primary">确认行动 [空格]</button>
+        <button id="btn-defend" class="btn btn-defend">防御 [D]</button>
+        <button id="btn-clear" class="btn btn-ghost">清空队列 [Esc]</button>
+        <button id="btn-auto" class="btn btn-auto" title="Tab 切换：自动循环用 priority 序列辅助作战，可随时切回">自动 [Tab]</button>
+        <label class="setting" title="关闭后敌人退回启发式 AI（SmartAI 停止学习）">
+          <input type="checkbox" id="chk-ai" checked> 敌人 AI 学习
+        </label>
+        <span id="mode-el" class="mode-indicator">手动</span>
+        <span class="hint">主技能 [1-9] · 瞬发 [Q/E/R] · 点击敌人切换目标 · ↑↓ 滚日志</span>
+      </div>
+    </section>
+
+    <section id="log-area">
+      <div class="log-header">战斗日志</div>
+      <div id="log" class="log"></div>
+    </section>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
