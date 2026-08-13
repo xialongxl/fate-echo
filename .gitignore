@@ -1,0 +1,15 @@
+# 依赖
+node_modules/
+
+# 历史备份目录（git 历史本身即版本备份，本地保留不动）
+_backup_*/
+
+# 一次性辅助脚本
+_fix_*.py
+_dbg_*.mjs
+_gen_*.mjs
+
+# 临时/系统文件
+*.log
+.DS_Store
+Thumbs.db

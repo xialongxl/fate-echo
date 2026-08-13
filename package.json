@@ -1,0 +1,12 @@
+{
+  "name": "fate-echo",
+  "version": "0.1.0",
+  "description": "《命运回响》文字回合制 RPG（设计见 NEW_GAME.md）",
+  "type": "module",
+  "scripts": {
+    "test": "node tools/run_all.mjs"
+  },
+  "dependencies": {
+    "@tensorflow/tfjs": "^4.22.0"
+  }
+}
