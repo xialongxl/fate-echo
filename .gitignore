@@ -3,6 +3,14 @@ node_modules/
 
 # 历史备份目录：早期备份与云端备份是两码事，全部纳入版本库（双保险）
 
+# 机密设计文档（不上传 GitHub，本地保留；规则匹配任意层级）
+AGENTS.md
+DESIGN_NOTES.md
+NEW_GAME.md
+Fate_echo_老会话历史摘要.md
+Fate_echo开发交接文档.md
+战利品拾取方式偏好.md
+
 # 一次性辅助脚本
 _fix_*.py
 _dbg_*.mjs
